@@ -1,9 +1,7 @@
 # screenRecording
 Smart Screen Recorder
-
 A Python-based screen recorder that allows users to record their screen and webcam simultaneously, with optional audio recording from the microphone and system sound.
 Features
-
 - Records screen in real-time
 - Optional audio recording from microphone and system sound
 - Supports multiple output formats (MP4, MKV, MOV)
