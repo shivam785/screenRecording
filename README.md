@@ -199,8 +199,3 @@ Thank you for your patience and support!
 ```
 © 2025 Kumar Shivam — All Rights Reserved
 ```
-
----
-
-```
-```
