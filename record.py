@@ -28,6 +28,12 @@ last_output_file = None
 engine = pyttsx3.init()
 voice_thread = None
 
+# --- Theme / colours (tweak these to taste) ---
+THEME_BG = "#0f1724"        # dark slate
+HEADER_BG = "#0b1220"      # header
+ACCENT_FG = "#38bdf8"      # cyan-ish accent for labels/buttons
+STATUS_IDLE = "#22c55e"
+
 # GUI globals
 root = None
 status_label = None
@@ -290,8 +296,10 @@ def build_atempo_factors(speed):
     factors.append(round(s, 5))
     return factors
 
+# ffmpeg merging now supports .webm for easy website deployment
 def ffmpeg_merge(video_file, audio_file, out_file, profile, speed=1.0, suppress_dialogs=False):
     try:
+        ext = os.path.splitext(out_file)[1].lower()
         input_video = ffmpeg.input(video_file)
         video_stream = input_video
         audio_stream = None
@@ -304,14 +312,22 @@ def ffmpeg_merge(video_file, audio_file, out_file, profile, speed=1.0, suppress_
                 factors = build_atempo_factors(speed)
                 for f in factors:
                     audio_stream = audio_stream.filter("atempo", f)
-        if audio_stream is not None:
-            out = ffmpeg.output(video_stream, audio_stream, out_file, vcodec='libx264', acodec='aac',
-                                crf=(26 if profile=="web" else 20), preset=('veryfast' if profile=="web" else 'faster'),
-                                movflags='+faststart', strict='experimental')
+        # choose codecs by format
+        if ext == ".webm":
+            vcodec = 'libvpx-vp9'
+            acodec = 'libopus'
+            out = ffmpeg.output(video_stream, audio_stream if audio_stream is not None else None, out_file,
+                                vcodec=vcodec, acodec=acodec)
         else:
-            out = ffmpeg.output(video_stream, out_file, vcodec='libx264',
-                                crf=(26 if profile=="web" else 20), preset=('veryfast' if profile=="web" else 'faster'),
-                                movflags='+faststart')
+            # default mp4/mkv/mov
+            if audio_stream is not None:
+                out = ffmpeg.output(video_stream, audio_stream, out_file, vcodec='libx264', acodec='aac',
+                                    crf=(26 if profile=="web" else 20), preset=('veryfast' if profile=="web" else 'faster'),
+                                    movflags='+faststart', strict='experimental')
+            else:
+                out = ffmpeg.output(video_stream, out_file, vcodec='libx264',
+                                    crf=(26 if profile=="web" else 20), preset=('veryfast' if profile=="web" else 'faster'),
+                                    movflags='+faststart')
         out.run(overwrite_output=True)
         log(f"FFmpeg finished: {out_file}")
         return True, ""
@@ -538,6 +554,48 @@ def on_webcam_toggle():
     cam_size_scale.config(state=state)
     cam_border_checkbox.config(state=state)
 
+# Generate a simple responsive HTML file that embeds the last recording for easy deployment
+def generate_web_embed():
+    global last_output_file
+    if not last_output_file or not os.path.exists(last_output_file):
+        messagebox.showinfo("No recording", "No recording found to embed. Please record first.")
+        return
+    out_dir = os.path.dirname(last_output_file)
+    filename = os.path.basename(last_output_file)
+    html_path = os.path.join(out_dir, f"embed_{os.path.splitext(filename)[0]}.html")
+    # use relative path in case user uploads both files to same website folder
+    html_content = f"""<!doctype html>
+<html lang=\"en\"> 
+<head>
+<meta charset=\"utf-8\">
+<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">
+<title>Recording Preview</title>
+<style>
+  body {{ background: #0b1220; color: #e6eef6; font-family: Arial, sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; }}
+  .container {{ width:90%; max-width:960px; padding:20px; box-sizing:border-box; }}
+  video {{ width:100%; height:auto; border-radius:8px; box-shadow: 0 6px 18px rgba(0,0,0,0.6); }}
+  .hint {{ margin-top:12px; color:#9fb7c9; font-size:0.95rem; }}
+</style>
+</head>
+<body>
+  <div class=\"container\">
+    <video controls playsinline>
+      <source src=\"{filename}\" type=\"video/{'webm' if filename.lower().endswith('.webm') else 'mp4'}\">
+      Your browser does not support the video tag.
+    </video>
+    <div class=\"hint\">Place <strong>{filename}</strong> alongside this HTML file on your web server and open this page.</div>
+  </div>
+</body>
+</html>"""
+    try:
+        with open(html_path, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        log(f"Generated embed HTML: {html_path}")
+        open_file(html_path)
+    except Exception as e:
+        log(f"Failed to write embed HTML: {e}")
+        messagebox.showerror("Error", f"Could not generate embed HTML:\n{e}")
+
 def create_ui():
     global root, status_label, elapsed_label, progress, log_text
     global profile_var, format_var, screen_speed_var
@@ -548,16 +606,16 @@ def create_ui():
     root = tk.Tk()
     root.title(APP_NAME)
     root.geometry("780x680")
-    root.configure(bg="#111827")
+    root.configure(bg=THEME_BG)
     style = ttk.Style(root)
     try:
         style.theme_use("clam")
     except Exception:
         pass
 
-    header = tk.Frame(root, bg="#0b1220")
+    header = tk.Frame(root, bg=HEADER_BG)
     header.pack(fill="x")
-    tk.Label(header, text=APP_NAME, font=("Segoe UI", 16, "bold"), bg="#0b1220", fg="white").pack(side="left", padx=10, pady=8)
+    tk.Label(header, text=APP_NAME, font=("Segoe UI", 16, "bold"), bg=HEADER_BG, fg="white").pack(side="left", padx=10, pady=8)
 
     main = ttk.Notebook(root)
     main.pack(fill="both", expand=True, padx=12, pady=10)
@@ -579,7 +637,8 @@ def create_ui():
     profile_cb = ttk.Combobox(gp, textvariable=profile_var, values=["Normal (higher)", "Web (smaller)"], state="readonly", width=24)
     profile_cb.grid(row=0, column=0, padx=8, pady=8)
     format_var = tk.StringVar(value=".mp4")
-    format_cb = ttk.Combobox(gp, textvariable=format_var, values=[".mp4", ".mkv", ".mov"], state="readonly", width=12)
+    # added .webm option for website-friendly output
+    format_cb = ttk.Combobox(gp, textvariable=format_var, values=[".mp4", ".mkv", ".mov", ".webm"], state="readonly", width=12)
     format_cb.grid(row=0, column=1, padx=8, pady=8)
 
     # --- Capture Speed selector (multiplier-style labels) ---
@@ -609,7 +668,7 @@ def create_ui():
     dur_frame = ttk.LabelFrame(tab_general, text="Duration (optional)")
     dur_frame.pack(fill="x", padx=10, pady=6)
     use_duration_var = tk.BooleanVar(value=cfg["use_duration"])
-    tk.Checkbutton(dur_frame, text="Record for fixed duration (seconds)", variable=use_duration_var, bg="#111827", fg="white", selectcolor="#111827").grid(row=0, column=0, padx=8, pady=6, sticky="w")
+    tk.Checkbutton(dur_frame, text="Record for fixed duration (seconds)", variable=use_duration_var, bg=THEME_BG, fg="white", selectcolor=THEME_BG).grid(row=0, column=0, padx=8, pady=6, sticky="w")
     duration_var = tk.StringVar(value=str(cfg["duration_seconds"]))
     tk.Entry(dur_frame, textvariable=duration_var, width=12).grid(row=0, column=1, padx=8)
     tk.Label(dur_frame, text="seconds").grid(row=0, column=2, sticky="w")
@@ -622,9 +681,9 @@ def create_ui():
     stop_btn.grid(row=0, column=1, padx=8, pady=8)
     progress = ttk.Progressbar(ctrl_frame, mode="indeterminate", length=220)
     progress.grid(row=0, column=2, padx=8)
-    status_label = tk.Label(ctrl_frame, text="Idle", bg="#111827", fg="#22c55e", font=("Segoe UI", 10))
+    status_label = tk.Label(ctrl_frame, text="Idle", bg=THEME_BG, fg=STATUS_IDLE, font=("Segoe UI", 10))
     status_label.grid(row=0, column=3, padx=8)
-    elapsed_label = tk.Label(ctrl_frame, text="Elapsed: 0s", bg="#111827", fg="white", font=("Segoe UI", 10))
+    elapsed_label = tk.Label(ctrl_frame, text="Elapsed: 0s", bg=THEME_BG, fg="white", font=("Segoe UI", 10))
     elapsed_label.grid(row=0, column=4, padx=8)
 
     presets_frame = ttk.LabelFrame(tab_general, text="Presets")
@@ -639,14 +698,14 @@ def create_ui():
     a1 = ttk.LabelFrame(tab_audio, text="Mic / System Audio")
     a1.pack(fill="x", padx=10, pady=8)
     mic_var = tk.BooleanVar(value=cfg["record_mic"])
-    tk.Checkbutton(a1, text="Record Microphone", variable=mic_var, bg="#111827", fg="white", selectcolor="#111827").grid(row=0, column=0, padx=8, pady=6, sticky="w")
+    tk.Checkbutton(a1, text="Record Microphone", variable=mic_var, bg=THEME_BG, fg="white", selectcolor=THEME_BG).grid(row=0, column=0, padx=8, pady=6, sticky="w")
     ttk.Button(a1, text="Refresh devices", command=on_refresh_devices).grid(row=0, column=1, padx=8)
     microphone_dropdown = ttk.Combobox(a1, values=[str(i) for i, n in list_audio_input_devices()], width=20)
     microphone_dropdown.grid(row=1, column=0, padx=8, pady=6, sticky="w")
     tk.Label(a1, text="Mic device index").grid(row=1, column=1, sticky="w")
 
     system_var = tk.BooleanVar(value=cfg["record_system"])
-    tk.Checkbutton(a1, text="Record System Audio (loopback)", variable=system_var, bg="#111827", fg="white", selectcolor="#111827").grid(row=2, column=0, padx=8, pady=6, sticky="w")
+    tk.Checkbutton(a1, text="Record System Audio (loopback)", variable=system_var, bg=THEME_BG, fg="white", selectcolor=THEME_BG).grid(row=2, column=0, padx=8, pady=6, sticky="w")
     system_dropdown = ttk.Combobox(a1, values=[str(i) for i, n in guess_loopback_devices()], width=20)
     system_dropdown.grid(row=3, column=0, padx=8, pady=6, sticky="w")
     tk.Label(a1, text="System device index (if available)").grid(row=3, column=1, sticky="w")
@@ -655,7 +714,7 @@ def create_ui():
     w1 = ttk.LabelFrame(tab_webcam, text="Webcam overlay")
     w1.pack(fill="x", padx=10, pady=8)
     webcam_var = tk.BooleanVar(value=cfg["record_webcam"])
-    tk.Checkbutton(w1, text="Enable webcam overlay", variable=webcam_var, bg="#111827", fg="white", selectcolor="#111827", command=on_webcam_toggle).grid(row=0, column=0, padx=8, pady=6, sticky="w")
+    tk.Checkbutton(w1, text="Enable webcam overlay", variable=webcam_var, bg=THEME_BG, fg="white", selectcolor=THEME_BG, command=on_webcam_toggle).grid(row=0, column=0, padx=8, pady=6, sticky="w")
     tk.Label(w1, text="Camera device index").grid(row=1, column=0, sticky="w", padx=8)
     cams = list_webcams_ui() if 'list_webcams_ui' in globals() else []
     if not cams:
@@ -674,7 +733,7 @@ def create_ui():
     cam_size_scale.set(20)
     cam_size_scale.grid(row=3, column=1, padx=8, pady=6)
     cam_border_var = tk.BooleanVar(value=False)
-    cam_border_checkbox = tk.Checkbutton(w1, text="Draw border around webcam", variable=cam_border_var, bg="#111827", fg="white", selectcolor="#111827")
+    cam_border_checkbox = tk.Checkbutton(w1, text="Draw border around webcam", variable=cam_border_var, bg=THEME_BG, fg="white", selectcolor=THEME_BG)
     cam_border_checkbox.grid(row=4, column=0, padx=8, pady=6, sticky="w")
 
     # Advanced tab
@@ -688,7 +747,7 @@ def create_ui():
     speed_cb = ttk.Combobox(adv_top, textvariable=speed_var, values=["0.5","0.75","1.0","1.25","1.5","2.0","3.0","4.0"], width=8, state="readonly")
     speed_cb.grid(row=0, column=1, padx=6)
     suppress_dialogs_var = tk.BooleanVar(value=cfg["suppress_dialogs"])
-    tk.Checkbutton(adv_top, text="Suppress dialogs while recording (log only)", variable=suppress_dialogs_var, bg="#111827", fg="white", selectcolor="#111827").grid(row=0, column=2, padx=16)
+    tk.Checkbutton(adv_top, text="Suppress dialogs while recording (log only)", variable=suppress_dialogs_var, bg=THEME_BG, fg="white", selectcolor=THEME_BG).grid(row=0, column=2, padx=16)
 
     tk.Label(adv, text="Application Log").pack(anchor="w", padx=8)
     log_frame = tk.Frame(adv)
@@ -709,10 +768,12 @@ def create_ui():
     on_refresh_devices()
     on_webcam_toggle()
 
-    bottom = tk.Frame(root, bg="#0b1220")
+    bottom = tk.Frame(root, bg=HEADER_BG)
     bottom.pack(fill="x")
     ttk.Button(bottom, text="Open Last Recording", command=lambda: open_file(last_output_file) if last_output_file else messagebox.showinfo("No recording","No recording yet.")).pack(side="left", padx=8, pady=6)
-    ttk.Button(bottom, text="Open Output Folder", command=lambda: open_file(cfg["output_dir"])).pack(side="left", padx=8, pady=6)
+    ttk.Button(bottom, text="Open Output Folder", command=lambda: open_file(cfg["output_dir"]) ).pack(side="left", padx=8, pady=6)
+    # New: generate a web-embed HTML file for easy website deployment
+    ttk.Button(bottom, text="Generate Web Embed (for site)", command=generate_web_embed).pack(side="right", padx=8, pady=6)
 
 def list_webcams_ui(max_idx=5):
     found = []
