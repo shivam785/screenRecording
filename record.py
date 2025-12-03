@@ -567,26 +567,7 @@ def generate_web_embed():
     html_content = f"""<!doctype html>
 <html lang=\"en\"> 
 <head>
-<meta charset=\"utf-8\">
-<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">
-<title>Recording Preview</title>
-<style>
-  body {{ background: #0b1220; color: #e6eef6; font-family: Arial, sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; }}
-  .container {{ width:90%; max-width:960px; padding:20px; box-sizing:border-box; }}
-  video {{ width:100%; height:auto; border-radius:8px; box-shadow: 0 6px 18px rgba(0,0,0,0.6); }}
-  .hint {{ margin-top:12px; color:#9fb7c9; font-size:0.95rem; }}
-</style>
-</head>
-<body>
-  <div class=\"container\">
-    <video controls playsinline>
-      <source src=\"{filename}\" type=\"video/{'webm' if filename.lower().endswith('.webm') else 'mp4'}\">
-      Your browser does not support the video tag.
-    </video>
-    <div class=\"hint\">Place <strong>{filename}</strong> alongside this HTML file on your web server and open this page.</div>
-  </div>
-</body>
-</html>"""
+<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n<title>Recording Preview</title>\n<style>\n  body {{ background: #0b1220; color: #e6eef6; font-family: Arial, sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; }}\n  .container {{ width:90%; max-width:960px; padding:20px; box-sizing:border-box; }}\n  video {{ width:100%; height:auto; border-radius:8px; box-shadow: 0 6px 18px rgba(0,0,0,0.6); }}\n  .hint {{ margin-top:12px; color:#9fb7c9; font-size:0.95rem; }}\n</style>\n</head>\n<body>\n  <div class=\"container\">\n    <video controls playsinline>\n      <source src=\"{filename}\" type=\"video/{'webm' if filename.lower().endswith('.webm') else 'mp4'}\">\n      Your browser does not support the video tag.\n    </video>\n    <div class=\"hint\">Place <strong>{filename}</strong> alongside this HTML file on your web server and open this page.</div>\n  </div>\n</body>\n</html>"""
     try:
         with open(html_path, 'w', encoding='utf-8') as f:
             f.write(html_content)
@@ -616,6 +597,8 @@ def create_ui():
     header = tk.Frame(root, bg=HEADER_BG)
     header.pack(fill="x")
     tk.Label(header, text=APP_NAME, font=("Segoe UI", 16, "bold"), bg=HEADER_BG, fg="white").pack(side="left", padx=10, pady=8)
+    credit_label = tk.Label(header, text="Devloped By: kumarShivam", font=("Segoe UI", 10), bg=HEADER_BG, fg=ACCENT_FG)
+    credit_label.pack(side="right", padx=10, pady=8)
 
     main = ttk.Notebook(root)
     main.pack(fill="both", expand=True, padx=12, pady=10)
