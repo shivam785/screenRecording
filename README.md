@@ -188,8 +188,9 @@ ffmpeg -version
 
 ## ⭐ Project Status
 
-⚠️ **This tool is NOT fully optimized yet.**
+⚠️ **This tool is  fully optimized .**
 Expect improvements over time.
+(optimastion has been done for further issues please feel free to rech out )
 Thank you for your patience and support!
 
 ---
