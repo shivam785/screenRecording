@@ -1,7 +1,6 @@
 ````markdown
 # ⭐ Smart Screen Recorder Advanced  
 ### A Powerful Python-Based Screen, Audio & Webcam Recorder  
-**© 2025 Kumar Shivam — All Rights Reserved**
 
 ---
 
