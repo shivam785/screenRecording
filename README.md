@@ -1,5 +1,6 @@
 ````markdown
-# ⭐ Smart Screen Recorder Advanced  
+# ⭐ Smart Screen Recorder Advanced
+
 ### A Powerful Python-Based Screen, Audio & Webcam Recorder  
 
 ---
@@ -11,7 +12,8 @@ Smart Screen Recorder Advanced is a Python-based desktop recording tool that cap
 - ⭐ Webcam overlay  
 - ⭐ Microphone audio  
 - ⭐ (Optional) System/loopback audio  
-- ⭐ Real-time logs and advanced controls  
+- ⭐ Real-time logs and advanced controls
+
 
 It provides a clean modern UI, FFmpeg-powered final encoding, adjustable screen speed, playback-speed control, and voice-activated commands.
 
