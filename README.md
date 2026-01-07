@@ -72,6 +72,7 @@ Install dependencies:
 pip install pyautogui opencv-python sounddevice scipy ffmpeg-python pillow pyttsx3 SpeechRecognition numpy
 ````
 
+
 ---
 
 ## ⭐ Installation
