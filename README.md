@@ -6,7 +6,6 @@
 ### A Powerful Python-Based Screen, Audio & Webcam Recorder  
 
 ---
-
 ## ⭐ Overview  
 Smart Screen Recorder Advanced is a Python-based desktop recording tool that captures:
 
