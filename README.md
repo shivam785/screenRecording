@@ -1,5 +1,4 @@
 ````markdown
-
 # ⭐ Smart Screen Recorder Advanced
 
 
